@@ -1,6 +1,7 @@
 mod ui;
 mod maze;
 
+use ::rand::{Rng, thread_rng};
 use egui_macroquad::macroquad::telemetry::disable;
 use macroquad::prelude::*;
 use maze::{Maze, Direction};
@@ -41,16 +42,16 @@ async fn main()
 
   let mut algorithm = Algorithm::DFS;
   let mut maze = Maze::new();
-  let mut stack_dfs: Vec<(u32, u32)> = vec![];
+  let mut stack_dfs: Vec<(usize, usize)> = vec![];
   let mut animate = true;
-  let mut delay = 20.;
+  let mut delay = 0.0000; // In seconds
+  let mut delta_time_bucket = 0.0;
+  let mut rng = thread_rng();
+  let mut generating = false;
 
   stack_dfs.push((0,0));
 
-  // maze.visit_and_set(2, 3, Direction::Up);
-  // maze.visit_and_set(4, 5, Direction::Down);
-  // maze.visit_and_set(6, 7, Direction::Left);
-  // maze.visit_and_set(8, 9, Direction::Right);
+  // TODO: implement maze solver asw
 
   // Helpful resources:
   // https://en.wikipedia.org/wiki/Maze_generation_algorithm
@@ -59,32 +60,49 @@ async fn main()
   // https://www.youtube.com/watch?v=Y37-gB83HKE
   loop
   {
-    if animate
+    if generating
     {
-      match algorithm
+      if animate
       {
-        Algorithm::DFS     => maze.step_dfs(&mut stack_dfs),
-        Algorithm::Kruskal => maze.step_kruskal(),
-        Algorithm::Prim    => maze.step_prim(),
-        Algorithm::Wilson  => maze.step_wilson()
+        delta_time_bucket += get_frame_time();
+        if delta_time_bucket > delay
+        {
+          delta_time_bucket = 0.0;
+          match algorithm
+          {
+            Algorithm::DFS     => { generating = maze.step_dfs(&mut stack_dfs, &mut rng); }
+            Algorithm::Kruskal => { generating = maze.step_kruskal(); }
+            Algorithm::Prim    => { generating = maze.step_prim(); }
+            Algorithm::Wilson  => { generating = maze.step_wilson(); }
+          }
+        }
+      }
+      else
+      {
+        match &algorithm
+        {
+          Algorithm::DFS     => maze.create_dfs(),
+          Algorithm::Kruskal => maze.create_kruskal(),
+          Algorithm::Prim    => maze.create_prim(),
+          Algorithm::Wilson  => maze.create_wilson(),
+        }
       }
     }
-    else
-    {
-      match algorithm
-      {
-        Algorithm::DFS => maze.create_dfs(),
-        Algorithm::Kruskal => maze.create_kruskal(),
-        Algorithm::Prim => maze.create_prim(),
-        Algorithm::Wilson => maze.create_wilson(),
-      }
-    }
+
+    // Making sure that no panics happen
+    if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
 
     maze::paint(&mut maze);
 
     // Process keys, mouse etc.
 
-    ui::paint(&mut algorithm, &mut animate);
+    ui::paint(
+      &mut algorithm,
+      &mut animate,
+      &mut generating,
+      &mut delay,
+      &mut maze,
+    );
 
     // Draw things before egui
 

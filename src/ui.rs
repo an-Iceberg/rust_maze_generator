@@ -1,8 +1,15 @@
-use egui_macroquad::{egui::{epaint::Shadow, Align2, Color32, Rounding, Stroke, Vec2, Visuals, Window}, ui};
+use egui_macroquad::{egui::{epaint::Shadow, Align2, Color32, Rounding, Stroke, Vec2, Visuals, Window, Slider}, ui};
+use macroquad::time::get_frame_time;
 
-use crate::{AUTHORS, VERSION, Algorithm};
+use crate::{AUTHORS, VERSION, Algorithm, maze::Maze};
 
-pub(crate) fn paint(algorithm: &mut Algorithm, animate: &mut bool)
+pub(crate) fn paint(
+  algorithm: &mut Algorithm,
+  animate: &mut bool,
+  generating: &mut bool,
+  delay: &mut f32,
+  maze: &mut Maze,
+)
 {
   ui(|egui_context|
   {
@@ -50,17 +57,27 @@ pub(crate) fn paint(algorithm: &mut Algorithm, animate: &mut bool)
 
         ui.separator();
 
-        if *algorithm == Algorithm::DFS
+        if *animate
         {
-          ui.label("Biases");
-          ui.label("Delay (in ms)");
+          ui.label("Delay (in seconds):");
+          ui.add(Slider::new(delay, 0.0..=0.001));
+
+          if *algorithm == Algorithm::DFS
+          {
+            ui.label("Biases");
+          }
+
           ui.separator();
         }
 
         if ui.button("Generate").clicked()
         {
-          // Generate maze
+          // Generate maze (this will be difficult)
+          *generating = true;
+          maze.clear();
         }
+
+        ui.label(format!("δ time: {}", get_frame_time()));
 
         ui.label("// Adjust delay time");
 
