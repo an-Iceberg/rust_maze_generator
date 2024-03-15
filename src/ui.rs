@@ -1,5 +1,5 @@
 use egui_macroquad::{egui::{epaint::Shadow, Align2, Color32, Rounding, Stroke, Vec2, Visuals, Window, Slider}, ui};
-use macroquad::time::get_frame_time;
+use macroquad::time::{get_frame_time, get_fps};
 
 use crate::{AUTHORS, VERSION, Algorithm, maze::Maze};
 
@@ -9,6 +9,7 @@ pub(crate) fn paint(
   generating: &mut bool,
   delay: &mut f32,
   maze: &mut Maze,
+  stack_dfs: &mut Vec<(usize, usize)>,
 )
 {
   ui(|egui_context|
@@ -50,22 +51,26 @@ pub(crate) fn paint(
 
         ui.label("Select an Algorithm:");
 
-        ui.radio_value(algorithm, Algorithm::DFS, "Iterative DFS (depth first search)");
-        ui.radio_value(algorithm, Algorithm::Kruskal, "Kruskal's Algorithm");
-        ui.radio_value(algorithm, Algorithm::Prim, "Prim's Algorithm");
-        ui.radio_value(algorithm, Algorithm::Wilson, "Wilson's Algorithm");
+        ui.add_enabled_ui(!*generating, |ui|
+        {
+          ui.radio_value(algorithm, Algorithm::DFS, "Iterative DFS (depth first search)");
+          ui.radio_value(algorithm, Algorithm::Kruskal, "Kruskal's Algorithm");
+          ui.radio_value(algorithm, Algorithm::Prim, "Prim's Algorithm");
+          ui.radio_value(algorithm, Algorithm::Wilson, "Wilson's Algorithm");
+        });
 
         ui.separator();
 
         if *animate
         {
           ui.label("Delay (in seconds):");
-          ui.add(Slider::new(delay, 0.0..=0.001));
+          ui.add(Slider::new(delay, 0.0..=0.01));
 
-          if *algorithm == Algorithm::DFS
-          {
-            ui.label("Biases");
-          }
+          // OPTIONAL: this
+          // if *algorithm == Algorithm::DFS
+          // {
+          //   ui.label("Biases");
+          // }
 
           ui.separator();
         }
@@ -75,9 +80,12 @@ pub(crate) fn paint(
           // Generate maze (this will be difficult)
           *generating = true;
           maze.clear();
+          stack_dfs.clear();
+          stack_dfs.push((0, 0));
         }
 
         ui.label(format!("δ time: {}", get_frame_time()));
+        ui.label(format!("fps:{}", get_fps()));
 
         ui.label("// Adjust delay time");
 

@@ -1,9 +1,9 @@
-use macroquad::{window::clear_background, color::{Color, RED}, shapes::{draw_rectangle, draw_line}};
+use macroquad::{window::clear_background, color::{Color, RED, LIME}, shapes::{draw_rectangle, draw_line}};
 use rand::{rngs::ThreadRng, Rng};
 
 use crate::{MAZE_WIDTH, BG_COLOR, LEFT_MAZE_OFFSET, WALL_WIDTH, TOP_MAZE_OFFSET, CELL_WIDTH, WALL_COLOR, MAZE_HEIGHT, UNVISITED_CELL_COLOR, CELL_COLOR};
 
-pub(crate) fn paint(maze: &mut Maze)
+pub(crate) fn paint(maze: &mut Maze, stack: &mut Vec<(usize, usize)>)
 {
   clear_background(Color::from_hex(BG_COLOR));
 
@@ -41,6 +41,17 @@ pub(crate) fn paint(maze: &mut Maze)
         else
         { Color::from_hex(CELL_COLOR) }
       );
+      // Top of stack
+      if let Some(top_of_stack) = stack.last()
+      {
+        draw_rectangle(
+          (LEFT_MAZE_OFFSET + (top_of_stack.0 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
+          (TOP_MAZE_OFFSET + (top_of_stack.1 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
+          CELL_WIDTH as f32,
+          CELL_WIDTH as f32,
+          LIME
+        );
+      }
       // Wall intersection in the lower right
       draw_rectangle(
         (LEFT_MAZE_OFFSET + ((x * (CELL_WIDTH + WALL_WIDTH)) + CELL_WIDTH)) as f32,
@@ -115,8 +126,7 @@ impl Maze
 {
   pub(crate) fn clear(&mut self)
   {
-    self.maze.into_iter()
-      .for_each(|mut _direction| { _direction = Direction::None; });
+    self.maze = Maze::new().maze;
   }
 
   pub(crate) fn get_direction(&self, x: u32, y: u32) -> Direction
@@ -225,8 +235,19 @@ impl Maze
     // Choose a random valid neighbour
     let neighbour = rng.gen_range(0..neighbours.len());
 
-    // Set cell to chosen direction
-    self.visit_and_set(current_cell.0, current_cell.1, neighbours.get(neighbour).unwrap().1);
+    // Set the chose neighbour to point to the current cell
+    self.visit_and_set(
+      neighbours.get(neighbour).unwrap().0.0,
+      neighbours.get(neighbour).unwrap().0.1,
+      match neighbours.get(neighbour).unwrap().1
+      {
+        Direction::Up => Direction::Down,
+        Direction::Down => Direction::Up,
+        Direction::Left => Direction::Right,
+        Direction::Right => Direction::Left,
+        Direction::None => Direction::None
+      }
+    );
 
     // Push all other neighbours onto stack
     neighbours.iter().enumerate()
@@ -240,6 +261,7 @@ impl Maze
     // Push chosen direction onto stack last
     stack.push(neighbours.get(neighbour).unwrap().0);
 
+    // Generate the maze while the stack is not empty
     return !stack.is_empty();
   }
 

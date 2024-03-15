@@ -22,9 +22,9 @@ fn window_configuration() -> Conf
 pub(crate) const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 pub(crate) const AUTHORS: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
 
-pub(crate) const BG_COLOR: u32 = 0x555555; // 200040
+pub(crate) const BG_COLOR: u32 = 0x805c7f; // 200040
 pub(crate) const CELL_COLOR: u32 = 0xc0c0c0;
-pub(crate) const UNVISITED_CELL_COLOR: u32 = 0x404040;
+pub(crate) const UNVISITED_CELL_COLOR: u32 = 0x000861;
 pub(crate) const WALL_COLOR: u32 = 0x000000;
 
 // 1768 cells
@@ -47,8 +47,10 @@ async fn main()
   let mut delay = 0.0000; // In seconds
   let mut delta_time_bucket = 0.0;
   let mut rng = thread_rng();
+  // This boolean needs to be present everywhere in the app
   let mut generating = false;
 
+  // TODO: leave the stack empty when not generating and initiate it when generating
   stack_dfs.push((0,0));
 
   // TODO: implement maze solver asw
@@ -86,13 +88,14 @@ async fn main()
           Algorithm::Prim    => maze.create_prim(),
           Algorithm::Wilson  => maze.create_wilson(),
         }
+        generating = false;
       }
     }
 
     // Making sure that no panics happen
     if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
 
-    maze::paint(&mut maze);
+    maze::paint(&mut maze, &mut stack_dfs);
 
     // Process keys, mouse etc.
 
@@ -102,6 +105,7 @@ async fn main()
       &mut generating,
       &mut delay,
       &mut maze,
+      &mut stack_dfs,
     );
 
     // Draw things before egui
