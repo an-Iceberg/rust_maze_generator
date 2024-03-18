@@ -296,52 +296,6 @@ impl Maze
     todo!()
   }
 
-  // FIX: doesn't generate maze
-  pub(crate) fn create_dfs(&mut self, rng: &mut ThreadRng)
-  {
-    let mut stack: Vec<(usize, usize)> = vec![];
-
-    // Generate the maze while the stack is not empty
-    while !stack.is_empty()
-    {
-      // Pop cell on top of stack
-      let current_cell = stack.pop().unwrap();
-
-      // Determine, which directions can be chosen from
-      let neighbours = self.unvisited_neighbours(current_cell.0, current_cell.1);
-
-      // Backtracking if there are no unvisited neighbours
-      if neighbours.is_empty()
-      {
-        stack.pop();
-        continue;
-      }
-
-      // Choose a random valid neighbour
-      let neighbour = rng.gen_range(0..neighbours.len());
-
-      // Set the chose neighbour to point to the current cell
-      self.visit_and_set(
-        neighbours.get(neighbour).unwrap().0.0,
-        neighbours.get(neighbour).unwrap().0.1,
-        neighbours.get(neighbour).unwrap().1.inverse()
-      );
-
-      // Push all other neighbours onto stack
-      neighbours.iter().enumerate()
-        // Skipping the randomly chosen neighbour
-        .filter(|(index, _)| *index == neighbour)
-        .for_each(|(_, (coordinates, _))|
-        {
-          stack.push(*coordinates);
-        });
-
-      // Push chosen neighbour onto stack last
-      stack.push(neighbours.get(neighbour).unwrap().0);
-    }
-
-  }
-
   pub(crate) fn create_kruskal(&mut self)
   {
   }

@@ -83,7 +83,7 @@ async fn main()
       {
         match &algorithm
         {
-          Algorithm::DFS     => maze.create_dfs(&mut rng),
+          Algorithm::DFS     => while !stack_dfs.is_empty() { maze.step_dfs(&mut stack_dfs, &mut rng); }
           Algorithm::Kruskal => maze.create_kruskal(),
           Algorithm::Prim    => maze.create_prim(),
           Algorithm::Wilson  => maze.create_wilson(),
