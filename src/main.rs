@@ -1,4 +1,4 @@
-mod ui;
+  mod ui;
 mod maze;
 
 use ::rand::{Rng, thread_rng};
@@ -51,7 +51,7 @@ async fn main()
   let mut generating = false;
 
   // TODO: leave the stack empty when not generating and initiate it when generating
-  stack_dfs.push((0,0));
+  // stack_dfs.push((0,0));
 
   // TODO: implement maze solver asw
 
@@ -83,7 +83,7 @@ async fn main()
       {
         match &algorithm
         {
-          Algorithm::DFS     => maze.create_dfs(),
+          Algorithm::DFS     => maze.create_dfs(&mut rng),
           Algorithm::Kruskal => maze.create_kruskal(),
           Algorithm::Prim    => maze.create_prim(),
           Algorithm::Wilson  => maze.create_wilson(),
@@ -95,7 +95,11 @@ async fn main()
     // Making sure that no panics happen
     if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
 
-    maze::paint(&mut maze, &mut stack_dfs);
+    maze::paint(
+      &mut maze,
+      &mut stack_dfs,
+      &generating
+    );
 
     // Process keys, mouse etc.
 

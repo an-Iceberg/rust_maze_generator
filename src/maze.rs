@@ -3,7 +3,11 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::{MAZE_WIDTH, BG_COLOR, LEFT_MAZE_OFFSET, WALL_WIDTH, TOP_MAZE_OFFSET, CELL_WIDTH, WALL_COLOR, MAZE_HEIGHT, UNVISITED_CELL_COLOR, CELL_COLOR};
 
-pub(crate) fn paint(maze: &mut Maze, stack: &mut Vec<(usize, usize)>)
+pub(crate) fn paint(
+  maze: &mut Maze,
+  stack: &mut Vec<(usize, usize)>,
+  generating: &bool
+)
 {
   clear_background(Color::from_hex(BG_COLOR));
 
@@ -41,16 +45,20 @@ pub(crate) fn paint(maze: &mut Maze, stack: &mut Vec<(usize, usize)>)
         else
         { Color::from_hex(CELL_COLOR) }
       );
-      // Top of stack
-      if let Some(top_of_stack) = stack.last()
+
+      // Only draw top of stack when generating maze
+      if *generating
       {
-        draw_rectangle(
-          (LEFT_MAZE_OFFSET + (top_of_stack.0 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
-          (TOP_MAZE_OFFSET + (top_of_stack.1 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
-          CELL_WIDTH as f32,
-          CELL_WIDTH as f32,
-          LIME
-        );
+        if let Some(top_of_stack) = stack.last()
+        {
+          draw_rectangle(
+            (LEFT_MAZE_OFFSET + (top_of_stack.0 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
+            (TOP_MAZE_OFFSET + (top_of_stack.1 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
+            CELL_WIDTH as f32,
+            CELL_WIDTH as f32,
+            LIME
+          );
+        }
       }
       // Wall intersection in the lower right
       draw_rectangle(
@@ -115,6 +123,21 @@ pub(crate) fn paint(maze: &mut Maze, stack: &mut Vec<(usize, usize)>)
 pub(crate) enum Direction
 {
   None, Up, Left, Down, Right
+}
+
+impl Direction
+{
+  pub(crate) fn inverse(&self) -> Self
+  {
+    match *self
+    {
+      Direction::Down  => Direction::Up,
+      Direction::Up    => Direction::Down,
+      Direction::Left  => Direction::Right,
+      Direction::Right => Direction::Left,
+      Direction::None  => Direction::None
+    }
+  }
 }
 
 pub(crate) struct Maze
@@ -239,14 +262,7 @@ impl Maze
     self.visit_and_set(
       neighbours.get(neighbour).unwrap().0.0,
       neighbours.get(neighbour).unwrap().0.1,
-      match neighbours.get(neighbour).unwrap().1
-      {
-        Direction::Up => Direction::Down,
-        Direction::Down => Direction::Up,
-        Direction::Left => Direction::Right,
-        Direction::Right => Direction::Left,
-        Direction::None => Direction::None
-      }
+      neighbours.get(neighbour).unwrap().1.inverse()
     );
 
     // Push all other neighbours onto stack
@@ -280,9 +296,50 @@ impl Maze
     todo!()
   }
 
-  pub(crate) fn create_dfs(&mut self)
+  // FIX: doesn't generate maze
+  pub(crate) fn create_dfs(&mut self, rng: &mut ThreadRng)
   {
-    let mut stack: Vec<(u32, u32)> = vec![];
+    let mut stack: Vec<(usize, usize)> = vec![];
+
+    // Generate the maze while the stack is not empty
+    while !stack.is_empty()
+    {
+      // Pop cell on top of stack
+      let current_cell = stack.pop().unwrap();
+
+      // Determine, which directions can be chosen from
+      let neighbours = self.unvisited_neighbours(current_cell.0, current_cell.1);
+
+      // Backtracking if there are no unvisited neighbours
+      if neighbours.is_empty()
+      {
+        stack.pop();
+        continue;
+      }
+
+      // Choose a random valid neighbour
+      let neighbour = rng.gen_range(0..neighbours.len());
+
+      // Set the chose neighbour to point to the current cell
+      self.visit_and_set(
+        neighbours.get(neighbour).unwrap().0.0,
+        neighbours.get(neighbour).unwrap().0.1,
+        neighbours.get(neighbour).unwrap().1.inverse()
+      );
+
+      // Push all other neighbours onto stack
+      neighbours.iter().enumerate()
+        // Skipping the randomly chosen neighbour
+        .filter(|(index, _)| *index == neighbour)
+        .for_each(|(_, (coordinates, _))|
+        {
+          stack.push(*coordinates);
+        });
+
+      // Push chosen neighbour onto stack last
+      stack.push(neighbours.get(neighbour).unwrap().0);
+    }
+
   }
 
   pub(crate) fn create_kruskal(&mut self)
