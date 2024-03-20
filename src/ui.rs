@@ -1,13 +1,11 @@
-use egui_macroquad::{egui::{epaint::Shadow, Align2, Color32, Rounding, Stroke, Vec2, Visuals, Window, Slider}, ui};
-use macroquad::time::{get_frame_time, get_fps};
-
+use egui_macroquad::{egui::{epaint::Shadow, Align2, Rounding, Slider, Vec2, Visuals, Window}, ui};
 use crate::{AUTHORS, VERSION, Algorithm, maze::Maze};
 
 pub(crate) fn paint(
   algorithm: &mut Algorithm,
   animate: &mut bool,
   generating: &mut bool,
-  delay: &mut f32,
+  speed: &mut u32,
   maze: &mut Maze,
   stack_dfs: &mut Vec<(usize, usize)>,
 )
@@ -63,8 +61,8 @@ pub(crate) fn paint(
 
         if *animate
         {
-          ui.label("Delay (in seconds):");
-          ui.add(Slider::new(delay, 0.0..=0.01));
+          ui.label("Speed");
+          ui.add(Slider::new(speed, 1..=10));
 
           // OPTIONAL: this
           // if *algorithm == Algorithm::DFS
@@ -84,16 +82,7 @@ pub(crate) fn paint(
           stack_dfs.push((0, 0));
         }
 
-        ui.label(format!("δ time: {}", get_frame_time()));
-        ui.label(format!("fps:{}", get_fps()));
-
-        ui.label("// Adjust delay time");
-
-        ui.label("// {OPTIONAL}: adjust maze size");
-
-        ui.label("// Insert stuff here");
-
-        ui.add_space(200.);
+        // ui.add_space(200.);
 
         ui.separator();
 
@@ -108,4 +97,3 @@ pub(crate) fn paint(
       });
   });
 }
-

@@ -1,4 +1,4 @@
-  mod ui;
+mod ui;
 mod maze;
 
 use ::rand::{Rng, thread_rng};
@@ -44,16 +44,14 @@ async fn main()
   let mut maze = Maze::new();
   let mut stack_dfs: Vec<(usize, usize)> = vec![];
   let mut animate = true;
-  let mut delay = 0.0000; // In seconds
-  let mut delta_time_bucket = 0.0;
+  let mut speed = 1; // In cells
+  // let mut delay_bucket = 0;
   let mut rng = thread_rng();
   // This boolean needs to be present everywhere in the app
   let mut generating = false;
 
   // TODO: leave the stack empty when not generating and initiate it when generating
   // stack_dfs.push((0,0));
-
-  // TODO: implement maze solver asw
 
   // Helpful resources:
   // https://en.wikipedia.org/wiki/Maze_generation_algorithm
@@ -66,16 +64,14 @@ async fn main()
     {
       if animate
       {
-        delta_time_bucket += get_frame_time();
-        if delta_time_bucket > delay
+        for _ in 1..=speed
         {
-          delta_time_bucket = 0.0;
           match algorithm
           {
-            Algorithm::DFS     => { generating = maze.step_dfs(&mut stack_dfs, &mut rng); }
-            Algorithm::Kruskal => { generating = maze.step_kruskal(); }
-            Algorithm::Prim    => { generating = maze.step_prim(); }
-            Algorithm::Wilson  => { generating = maze.step_wilson(); }
+            Algorithm::DFS     => generating = maze.step_dfs(&mut stack_dfs, &mut rng),
+            Algorithm::Kruskal => generating = maze.step_kruskal(),
+            Algorithm::Prim    => generating = maze.step_prim(),
+            Algorithm::Wilson  => generating = maze.step_wilson(),
           }
         }
       }
@@ -93,7 +89,7 @@ async fn main()
     }
 
     // Making sure that no panics happen
-    if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
+    // if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
 
     maze::paint(
       &mut maze,
@@ -107,7 +103,7 @@ async fn main()
       &mut algorithm,
       &mut animate,
       &mut generating,
-      &mut delay,
+      &mut speed,
       &mut maze,
       &mut stack_dfs,
     );
@@ -124,7 +120,4 @@ async fn main()
 
 #[derive(PartialEq, Eq)]
 enum Algorithm
-{
-  DFS, Kruskal, Prim, Wilson
-}
-
+{ DFS, Kruskal, Prim, Wilson }

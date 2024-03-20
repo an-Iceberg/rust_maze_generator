@@ -242,6 +242,9 @@ impl Maze
 
   pub(crate) fn step_dfs(&mut self, stack: &mut Vec<(usize, usize)>, rng: &mut ThreadRng) -> bool
   {
+    // This prevents a panic at speed != 1
+    if stack.is_empty() { return false; }
+
     // Pop cell on top of stack
     let current_cell = stack.pop().unwrap();
 
