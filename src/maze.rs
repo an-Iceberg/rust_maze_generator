@@ -1,11 +1,11 @@
-use macroquad::{window::clear_background, color::{Color, RED, LIME}, shapes::{draw_rectangle, draw_line}};
-use rand::{rngs::ThreadRng, Rng};
+use macroquad::{window::clear_background, color::{Color, LIME}, shapes::draw_rectangle};
+use rand::{rngs::ThreadRng, thread_rng, Rng};
 
 use crate::{MAZE_WIDTH, BG_COLOR, LEFT_MAZE_OFFSET, WALL_WIDTH, TOP_MAZE_OFFSET, CELL_WIDTH, WALL_COLOR, MAZE_HEIGHT, UNVISITED_CELL_COLOR, CELL_COLOR};
 
 pub(crate) fn paint(
-  maze: &mut Maze,
-  stack: &mut Vec<(usize, usize)>,
+  maze: &Maze,
+  top_of_stack_opt: &Option<(usize, usize)>,
   generating: &bool
 )
 {
@@ -49,7 +49,7 @@ pub(crate) fn paint(
       // Only draw top of stack when generating maze
       if *generating
       {
-        if let Some(top_of_stack) = stack.last()
+        if let Some(top_of_stack) = top_of_stack_opt
         {
           draw_rectangle(
             (LEFT_MAZE_OFFSET + (top_of_stack.0 as u32 * (CELL_WIDTH + WALL_WIDTH))) as f32,
@@ -143,13 +143,32 @@ impl Direction
 pub(crate) struct Maze
 {
   maze: [Direction; 1768],
+  stack_dfs: Vec<(usize, usize)>,
+  rng: ThreadRng,
 }
 
 impl Maze
 {
+  pub fn new() -> Self
+  {
+    return Maze
+    {
+      maze: [Direction::None; (MAZE_WIDTH * MAZE_HEIGHT) as usize],
+      stack_dfs: vec![],
+      rng: thread_rng(),
+    };
+  }
+
   pub(crate) fn clear(&mut self)
   {
     self.maze = Maze::new().maze;
+    self.stack_dfs.clear();
+    self.stack_dfs.push((0, 0));
+  }
+
+  pub fn tos(&self) -> Option<(usize, usize)>
+  {
+    return self.stack_dfs.last().copied();
   }
 
   pub(crate) fn get_direction(&self, x: u32, y: u32) -> Direction
@@ -208,45 +227,37 @@ impl Maze
     if let Some(up) = up_neighbour
     {
       if self.get_direction(up.0 as u32, up.1 as u32) == Direction::None
-      {
-        neighbours.push(((up), Direction::Up));
-      }
+      { neighbours.push(((up), Direction::Up)); }
     }
 
     if let Some(down) = down_neighbour
     {
       if self.get_direction(down.0 as u32, down.1 as u32) == Direction::None
-      {
-        neighbours.push(((down), Direction::Down));
-      }
+      { neighbours.push(((down), Direction::Down)); }
     }
 
     if let Some(left) = left_neighbour
     {
       if self.get_direction(left.0 as u32, left.1 as u32) == Direction::None
-      {
-        neighbours.push(((left), Direction::Left));
-      }
+      { neighbours.push(((left), Direction::Left)); }
     }
 
     if let Some(right) = right_neighbour
     {
       if self.get_direction(right.0 as u32, right.1 as u32) == Direction::None
-      {
-        neighbours.push(((right), Direction::Right));
-      }
+      { neighbours.push(((right), Direction::Right)); }
     }
 
     return neighbours;
   }
 
-  pub(crate) fn step_dfs(&mut self, stack: &mut Vec<(usize, usize)>, rng: &mut ThreadRng) -> bool
+  pub(crate) fn step_dfs(&mut self) -> Option<(usize, usize)>
   {
     // This prevents a panic at speed != 1
-    if stack.is_empty() { return false; }
+    if self.stack_dfs.is_empty() { return None; }
 
     // Pop cell on top of stack
-    let current_cell = stack.pop().unwrap();
+    let current_cell = self.stack_dfs.pop().unwrap();
 
     // Determine, which directions can be chosen from
     let neighbours = self.unvisited_neighbours(current_cell.0, current_cell.1);
@@ -255,11 +266,11 @@ impl Maze
     if neighbours.is_empty()
     {
       // self.visit_and_set(current_cell.0, current_cell.1, Direction::Terminal);
-      return !stack.is_empty();
+      return self.stack_dfs.last().copied();
     }
 
     // Choose a random valid neighbour
-    let neighbour = rng.gen_range(0..neighbours.len());
+    let neighbour = self.rng.gen_range(0..neighbours.len());
 
     // Set the chose neighbour to point to the current cell
     self.visit_and_set(
@@ -274,14 +285,14 @@ impl Maze
       .filter(|(index, _)| *index == neighbour)
       .for_each(|(_, (coordinates, _))|
       {
-        stack.push(*coordinates);
+        self.stack_dfs.push(*coordinates);
       });
 
     // Push chosen direction onto stack last
-    stack.push(neighbours.get(neighbour).unwrap().0);
+    self.stack_dfs.push(neighbours.get(neighbour).unwrap().0);
 
-    // Generate the maze while the stack is not empty
-    return !stack.is_empty();
+    // Generate the maze while the stack has top element
+    return self.stack_dfs.last().copied();
   }
 
   pub(crate) fn step_kruskal(&mut self) -> bool
@@ -310,232 +321,4 @@ impl Maze
   pub(crate) fn create_wilson(&mut self)
   {
   }
-
-  pub(crate) fn new() -> Self
-  {
-    Maze{ maze: [
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-      Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None, Direction::None,
-    ] }
-  }
 }
-

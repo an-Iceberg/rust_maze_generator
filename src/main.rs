@@ -1,10 +1,9 @@
 mod ui;
 mod maze;
 
-use ::rand::{Rng, thread_rng};
 use egui_macroquad::macroquad::telemetry::disable;
 use macroquad::prelude::*;
-use maze::{Maze, Direction};
+use maze::Maze;
 
 fn window_configuration() -> Conf
 {
@@ -42,22 +41,26 @@ async fn main()
 
   let mut algorithm = Algorithm::DFS;
   let mut maze = Maze::new();
-  let mut stack_dfs: Vec<(usize, usize)> = vec![];
+  let mut tos: Option<(usize, usize)> = None; // Top of stack
   let mut animate = true;
   let mut speed = 1; // In cells
   // let mut delay_bucket = 0;
-  let mut rng = thread_rng();
+  // let mut rng = thread_rng();
   // This boolean needs to be present everywhere in the app
   let mut generating = false;
 
-  // TODO: leave the stack empty when not generating and initiate it when generating
-  // stack_dfs.push((0,0));
+  // TODO: implement many more generating algorithms
+  // TODO: compile to wasm b/c the base functionality is already done
+  // TODO: release 1.0.0 b/c it's ready
+  // TODO: tests
 
   // Helpful resources:
   // https://en.wikipedia.org/wiki/Maze_generation_algorithm
   // https://www.youtube.com/watch?v=cQVH4gcb3O4
   // https://www.youtube.com/watch?v=ffkSQ_LpSkc
   // https://www.youtube.com/watch?v=Y37-gB83HKE
+  // https://www.youtube.com/watch?v=1GENvb4y95s&list=PLwIV1dqznwSfvkh5YVYF3ioumOVpMR9KV
+  // https://www.youtube.com/watch?v=U3meEXvYFsc
   loop
   {
     if generating
@@ -68,36 +71,30 @@ async fn main()
         {
           match algorithm
           {
-            Algorithm::DFS     => generating = maze.step_dfs(&mut stack_dfs, &mut rng),
-            Algorithm::Kruskal => generating = maze.step_kruskal(),
-            Algorithm::Prim    => generating = maze.step_prim(),
-            Algorithm::Wilson  => generating = maze.step_wilson(),
+            Algorithm::DFS => tos = maze.step_dfs(),
           }
         }
       }
       else
       {
-        match &algorithm
+        match algorithm
         {
-          Algorithm::DFS     => while !stack_dfs.is_empty() { maze.step_dfs(&mut stack_dfs, &mut rng); }
-          Algorithm::Kruskal => maze.create_kruskal(),
-          Algorithm::Prim    => maze.create_prim(),
-          Algorithm::Wilson  => maze.create_wilson(),
+          Algorithm::DFS =>
+          {
+            tos = maze.tos();
+            while let Some(_) = tos { tos = maze.step_dfs(); }
+          }
         }
-        generating = false;
       }
+
+      if tos.is_none() { generating = false; }
     }
 
-    // Making sure that no panics happen
-    // if stack_dfs.is_empty() { stack_dfs.push((0,0)); }
-
     maze::paint(
-      &mut maze,
-      &mut stack_dfs,
+      &maze,
+      &tos,
       &generating
     );
-
-    // Process keys, mouse etc.
 
     ui::paint(
       &mut algorithm,
@@ -105,7 +102,6 @@ async fn main()
       &mut generating,
       &mut speed,
       &mut maze,
-      &mut stack_dfs,
     );
 
     // Draw things before egui
@@ -120,4 +116,4 @@ async fn main()
 
 #[derive(PartialEq, Eq)]
 enum Algorithm
-{ DFS, Kruskal, Prim, Wilson }
+{ DFS /*, Kruskal, Prim, Wilson */ }

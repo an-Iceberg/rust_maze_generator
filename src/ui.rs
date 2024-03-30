@@ -7,7 +7,6 @@ pub(crate) fn paint(
   generating: &mut bool,
   speed: &mut u32,
   maze: &mut Maze,
-  stack_dfs: &mut Vec<(usize, usize)>,
 )
 {
   ui(|egui_context|
@@ -52,9 +51,9 @@ pub(crate) fn paint(
         ui.add_enabled_ui(!*generating, |ui|
         {
           ui.radio_value(algorithm, Algorithm::DFS, "Iterative DFS (depth first search)");
-          ui.radio_value(algorithm, Algorithm::Kruskal, "Kruskal's Algorithm");
-          ui.radio_value(algorithm, Algorithm::Prim, "Prim's Algorithm");
-          ui.radio_value(algorithm, Algorithm::Wilson, "Wilson's Algorithm");
+          // ui.radio_value(algorithm, Algorithm::Kruskal, "Kruskal's Algorithm");
+          // ui.radio_value(algorithm, Algorithm::Prim, "Prim's Algorithm");
+          // ui.radio_value(algorithm, Algorithm::Wilson, "Wilson's Algorithm");
         });
 
         ui.separator();
@@ -75,11 +74,8 @@ pub(crate) fn paint(
 
         if ui.button("Generate").clicked()
         {
-          // Generate maze (this will be difficult)
           *generating = true;
           maze.clear();
-          stack_dfs.clear();
-          stack_dfs.push((0, 0));
         }
 
         // ui.add_space(200.);
