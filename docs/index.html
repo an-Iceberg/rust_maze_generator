@@ -90,22 +90,22 @@
     // ⬡⬢
     function createHexagon() {
       const bg = document.querySelector('#background');
-      const hexagon = document.createElement('span');
+      const square = document.createElement('span');
 
       var size = Math.random() * 50;
       size += 20
 
-      hexagon.style.width = `${size}px`;
-      hexagon.style.height = `${size}px`;
-      hexagon.style.top = Math.random() * innerHeight + 'px';
-      hexagon.style.left = Math.random() * innerWidth + 'px';
-      hexagon.style.backgroundColor = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-      hexagon.style.clipPath = "polygon(25% 7%, 75% 7%, 100% 50%, 75% 93%, 25% 93%, 0% 50%)";
+      square.style.width = `${size}px`
+      square.style.height = `${size}px`
 
-      bg.appendChild(hexagon);
+      square.style.top = Math.random() * innerHeight + 'px'
+      square.style.left = Math.random() * innerWidth + 'px'
+      square.style.backgroundColor = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`
+
+      bg.appendChild(square);
 
       setTimeout(() => {
-        hexagon.remove()
+        square.remove()
       }, 5000);
     }
 
@@ -121,7 +121,7 @@
       event.preventDefault()
     }, false);
   </script>
-  <script>load("rust_graph_visualiser@v2.0.0.wasm");</script>
+  <script>load("maze_generator@v0.4.0.wasm");</script>
 </body>
 
 </html>

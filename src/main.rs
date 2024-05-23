@@ -41,7 +41,8 @@ async fn main()
 
   let mut algorithm = Algorithm::DFS;
   let mut maze = Maze::new();
-  let mut tos: Option<(usize, usize)> = None; // Top of stack
+  // Top of stack
+  let mut tos: Option<(usize, usize)> = None;
   let mut animate = true;
   let mut speed = 1; // In cells
   // let mut delay_bucket = 0;
@@ -52,6 +53,7 @@ async fn main()
   // TODO: implement many more generating algorithms
   // TODO: compile to wasm b/c the base functionality is already done
   // TODO: release 1.0.0 b/c it's ready
+  // TODO: maybe implement strategy pattern for different maze generating algorithms?
   // TODO: tests
 
   // Helpful resources:
@@ -82,7 +84,7 @@ async fn main()
           Algorithm::DFS =>
           {
             tos = maze.tos();
-            while let Some(_) = tos { tos = maze.step_dfs(); }
+            while tos.is_some() { tos = maze.step_dfs(); }
           }
         }
       }

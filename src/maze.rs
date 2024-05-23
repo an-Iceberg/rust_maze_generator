@@ -166,6 +166,7 @@ impl Maze
     self.stack_dfs.push((0, 0));
   }
 
+  /// Top of stack
   pub fn tos(&self) -> Option<(usize, usize)>
   {
     return self.stack_dfs.last().copied();
